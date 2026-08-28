@@ -17,7 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/game.css?v=ambience1" />
+    <link rel="stylesheet" href="css/game.css?v=cozy4" />
   </head>
   <body>
     <div id="app">
@@ -48,7 +48,7 @@
           </p>
           <nav class="header-actions" aria-label="Gallery navigation">
             <button type="button" id="btn-settings" class="cozy-btn" aria-label="Open ambience settings" aria-haspopup="dialog" aria-expanded="false">
-              <img src="assets/ui/icons/cog.png?v=ambience1" alt="" />
+              <img src="assets/ui/icons/cog.png?v=cozy4" alt="" />
               <span>Settings</span>
             </button>
             <button type="button" id="btn-gallery-home" class="cozy-btn" aria-label="Home, back to the title screen">
@@ -90,7 +90,7 @@
           <div class="puzzle-header-end">
             <div id="puzzle-hud" class="puzzle-hud"></div>
             <button type="button" id="btn-settings-puzzle" class="icon-btn" aria-label="Open ambience settings">
-              <img src="assets/ui/icons/cog.png?v=ambience1" alt="" />
+              <img src="assets/ui/icons/cog.png?v=cozy4" alt="" />
             </button>
           </div>
         </header>
@@ -182,9 +182,11 @@
       </div>
     </div>
 
+    <canvas id="confetti" class="confetti"></canvas>
+
     <div id="settings-pop" class="settings-pop" hidden>
       <p class="settings-kicker">Ambience</p>
-      <p class="settings-lead">Original room tone — nothing licensed, nothing downloaded.</p>
+      <p class="settings-lead">Original room tone and a little music — nothing licensed, nothing downloaded.</p>
       <div id="ambience-list" class="ambience-list"></div>
       <label class="settings-vol">
         Volume
@@ -192,6 +194,6 @@
       </label>
     </div>
 
-    <script type="module" src="js/game.js?v=ambience1"></script>
+    <script type="module" src="js/game.js?v=cozy4"></script>
   </body>
 </html>

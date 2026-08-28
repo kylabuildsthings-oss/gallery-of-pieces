@@ -5,7 +5,7 @@ import {
   paintingById,
 } from "./paintings.js";
 import { loadAndPixelate } from "./pixelate.js";
-import { Sfx, AMBIENCES } from "./audio.js";
+import { Sfx, AMBIENCES } from "./audio.js?v=cozy4";
 
 const sfx = new Sfx();
 
@@ -684,6 +684,7 @@ let confettiTimer = 0;
 
 function burstConfetti() {
   const canvas = els.confetti;
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -717,26 +718,42 @@ function burstConfetti() {
 
 function stopConfetti() {
   cancelAnimationFrame(confettiTimer);
-  const ctx = els.confetti.getContext("2d");
-  ctx.clearRect(0, 0, els.confetti.width, els.confetti.height);
-  els.confetti.classList.remove("on");
+  const canvas = els.confetti;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.classList.remove("on");
+}
+
+let ignoreHash = false;
+
+function stripHash() {
+  if (!location.hash) return;
+  ignoreHash = true;
+  history.replaceState(null, "", location.pathname + location.search);
+  setTimeout(() => {
+    ignoreHash = false;
+  }, 0);
 }
 
 function returnToGallery() {
+  closeSettings();
   els.completeModal.hidden = true;
   closeMode();
   closeBook();
   stopConfetti();
+  stripHash();
   showScreen("gallery");
   renderGallery();
 }
 
 function returnToTitle() {
+  closeSettings();
   els.completeModal.hidden = true;
   closeMode();
   closeBook();
   stopConfetti();
-  history.replaceState(null, "", location.pathname + location.search);
+  stripHash();
   showScreen("title");
 }
 
@@ -843,10 +860,6 @@ function bind() {
   });
   els.btnHome.addEventListener("click", () => {
     sfx.tick();
-    if (state.placed > 0 && state.placed < PIECE_COUNT) {
-      const leave = confirm("Leave this puzzle and return to the gallery?");
-      if (!leave) return;
-    }
     returnToGallery();
   });
 
@@ -934,7 +947,12 @@ window.__qa = {
 };
 
 async function bootFromHash() {
+  if (ignoreHash) {
+    ignoreHash = false;
+    return;
+  }
   const hash = location.hash.replace(/^#/, "");
+  if (!hash) return;
   if (hash === "gallery") {
     showScreen("gallery");
     renderGallery();

@@ -4,7 +4,8 @@ export const AMBIENCES = [
   { id: "off", label: "Quiet", hint: "Just the gallery" },
   { id: "rain", label: "Soft rain", hint: "A drizzle on the skylight" },
   { id: "hearth", label: "Hearth", hint: "A low fire in the next room" },
-  { id: "evening", label: "Evening gallery", hint: "Hushed room, distant notes" },
+  { id: "evening", label: "Evening music", hint: "A quiet original lullaby" },
+  { id: "visitors", label: "Visitors", hint: "Soft talk from the next room" },
 ];
 
 export class Sfx {
@@ -12,11 +13,12 @@ export class Sfx {
     this.ctx = null;
     this.master = null;
     this.ambienceGain = null;
+    this._bus = null;
     this.ambienceId = "evening";
     this.volume = 0.55;
     this._nodes = [];
     this._timers = [];
-    this._noise = null;
+    this._buffers = {};
   }
 
   resume() {
@@ -36,6 +38,10 @@ export class Sfx {
 
   #now() {
     return this.ctx ? this.ctx.currentTime : 0;
+  }
+
+  #out() {
+    return this._bus || this.ambienceGain;
   }
 
   #tone(freq, duration, type = "square", gain = 0.07, delay = 0) {
@@ -108,13 +114,18 @@ export class Sfx {
       this.ctx.currentTime,
       0.12
     );
+    this._bus = this.ctx.createGain();
+    this._bus.gain.value = 1;
+    this._bus.connect(this.ambienceGain);
+    this.#keep(this._bus);
     if (id === "rain") this.#startRain();
     else if (id === "hearth") this.#startHearth();
+    else if (id === "visitors") this.#startVisitors();
     else this.#startEvening();
   }
 
   stopAmbience() {
-    this._timers.forEach((id) => clearTimeout(id));
+    this._timers.forEach((tid) => clearTimeout(tid));
     this._timers = [];
     this._nodes.forEach((node) => {
       try {
@@ -129,6 +140,7 @@ export class Sfx {
       }
     });
     this._nodes = [];
+    this._bus = null;
   }
 
   #keep(node) {
@@ -142,25 +154,46 @@ export class Sfx {
     return id;
   }
 
-  #noiseBuffer(seconds = 2) {
-    if (this._noise) return this._noise;
+  #noiseBuffer(kind = "white", seconds = 8) {
+    const key = `${kind}:${seconds}`;
+    if (this._buffers[key]) return this._buffers[key];
     const sr = this.ctx.sampleRate;
     const len = Math.floor(sr * seconds);
     const buf = this.ctx.createBuffer(1, len, sr);
     const data = buf.getChannelData(0);
+    let b0 = 0;
+    let b1 = 0;
+    let b2 = 0;
     let last = 0;
     for (let i = 0; i < len; i++) {
       const white = Math.random() * 2 - 1;
-      last = (last + 0.02 * white) / 1.02;
-      data[i] = last * 3.2;
+      let sample = white;
+      if (kind === "pink") {
+        b0 = 0.99765 * b0 + white * 0.099046;
+        b1 = 0.963 * b1 + white * 0.2965164;
+        b2 = 0.5703 * b2 + white * 1.052691;
+        sample = (b0 + b1 + b2 + white * 0.1848) * 0.11;
+      } else if (kind === "brown") {
+        last = (last + 0.02 * white) / 1.02;
+        sample = last * 3.2;
+      }
+      data[i] = sample;
     }
-    this._noise = buf;
+    const fade = Math.min(Math.floor(sr * 0.08), Math.floor(len / 4));
+    for (let i = 0; i < fade; i++) {
+      const t = i / fade;
+      const a = data[i];
+      const b = data[len - fade + i];
+      data[i] = a * t + b * (1 - t);
+      data[len - fade + i] = b * t + a * (1 - t);
+    }
+    this._buffers[key] = buf;
     return buf;
   }
 
-  #loopNoise(filterType, freq, q, gainVal) {
+  #loopNoise(kind, filterType, freq, q, gainVal) {
     const src = this.ctx.createBufferSource();
-    src.buffer = this.#noiseBuffer();
+    src.buffer = this.#noiseBuffer(kind);
     src.loop = true;
     const filter = this.ctx.createBiquadFilter();
     filter.type = filterType;
@@ -170,7 +203,7 @@ export class Sfx {
     g.gain.value = gainVal;
     src.connect(filter);
     filter.connect(g);
-    g.connect(this.ambienceGain);
+    g.connect(this.#out());
     src.start();
     this.#keep(src);
     this.#keep(filter);
@@ -179,109 +212,228 @@ export class Sfx {
   }
 
   #startRain() {
-    const bed = this.#loopNoise("lowpass", 920, 0.65, 0.22);
+    const wash = this.#loopNoise("pink", "lowpass", 6400, 0.65, 0.22);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 420;
+    wash.filter.disconnect();
+    wash.filter.connect(hp);
+    hp.connect(wash.g);
+    this.#keep(hp);
+
+    const spray = this.#loopNoise("white", "highpass", 2400, 0.7, 0.05);
+    spray.filter.frequency.value = 2400;
+    const sprayLp = this.ctx.createBiquadFilter();
+    sprayLp.type = "lowpass";
+    sprayLp.frequency.value = 9000;
+    spray.filter.disconnect();
+    spray.filter.connect(sprayLp);
+    sprayLp.connect(spray.g);
+    this.#keep(sprayLp);
+
     const lfo = this.ctx.createOscillator();
     const lfoG = this.ctx.createGain();
     lfo.type = "sine";
-    lfo.frequency.value = 0.07;
-    lfoG.gain.value = 180;
+    lfo.frequency.value = 0.05;
+    lfoG.gain.value = 0.04;
     lfo.connect(lfoG);
-    lfoG.connect(bed.filter.frequency);
+    lfoG.connect(wash.g.gain);
     lfo.start();
     this.#keep(lfo);
     this.#keep(lfoG);
 
-    const drip = () => {
-      if (this.ambienceId !== "rain" || !this.ctx) return;
+    const drop = () => {
+      if (this.ambienceId !== "rain" || !this.ctx || !this._bus) return;
       const t0 = this.#now();
-      const osc = this.ctx.createOscillator();
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.#noiseBuffer("white", 2);
+      src.loop = true;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 1800 + Math.random() * 2200;
+      bp.Q.value = 0.9;
       const env = this.ctx.createGain();
-      const f = this.ctx.createBiquadFilter();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(1400 + Math.random() * 900, t0);
-      f.type = "highpass";
-      f.frequency.value = 900;
+      const dur = 0.05 + Math.random() * 0.07;
       env.gain.setValueAtTime(0.0001, t0);
-      env.gain.exponentialRampToValueAtTime(0.045, t0 + 0.01);
-      env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
-      osc.connect(f);
-      f.connect(env);
-      env.connect(this.ambienceGain);
-      osc.start(t0);
-      osc.stop(t0 + 0.16);
-      this.#keep(osc);
-      this.#later(drip, 900 + Math.random() * 2200);
+      env.gain.exponentialRampToValueAtTime(0.07 + Math.random() * 0.05, t0 + 0.008);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(bp);
+      bp.connect(env);
+      env.connect(this.#out());
+      src.start(t0);
+      src.stop(t0 + dur + 0.02);
+      this.#later(drop, 420 + Math.random() * 1100);
     };
-    drip();
+    drop();
   }
 
   #startHearth() {
-    this.#loopNoise("lowpass", 240, 0.5, 0.1);
+    this.#loopNoise("brown", "lowpass", 240, 0.5, 0.1);
     const rumble = this.ctx.createOscillator();
     const rg = this.ctx.createGain();
     rumble.type = "sine";
     rumble.frequency.value = 52;
-    rg.gain.value = 0.035;
+    rg.gain.value = 0.028;
     rumble.connect(rg);
-    rg.connect(this.ambienceGain);
+    rg.connect(this.#out());
     rumble.start();
     this.#keep(rumble);
     this.#keep(rg);
 
     const pop = () => {
-      if (this.ambienceId !== "hearth" || !this.ctx) return;
+      if (this.ambienceId !== "hearth" || !this.ctx || !this._bus) return;
       const t0 = this.#now();
       const src = this.ctx.createBufferSource();
-      src.buffer = this.#noiseBuffer();
+      src.buffer = this.#noiseBuffer("white", 2);
       const bp = this.ctx.createBiquadFilter();
       bp.type = "bandpass";
-      bp.frequency.value = 400 + Math.random() * 1400;
-      bp.Q.value = 0.8;
+      bp.frequency.value = 280 + Math.random() * 900;
+      bp.Q.value = 0.7;
       const env = this.ctx.createGain();
-      const dur = 0.04 + Math.random() * 0.11;
+      const dur = 0.05 + Math.random() * 0.12;
       env.gain.setValueAtTime(0.0001, t0);
-      env.gain.exponentialRampToValueAtTime(0.12 + Math.random() * 0.1, t0 + 0.008);
+      env.gain.exponentialRampToValueAtTime(0.1 + Math.random() * 0.08, t0 + 0.01);
       env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       src.connect(bp);
       bp.connect(env);
-      env.connect(this.ambienceGain);
+      env.connect(this.#out());
       src.start(t0);
       src.stop(t0 + dur + 0.02);
-      this.#keep(src);
-      this.#later(pop, 70 + Math.random() * 380);
+      this.#later(pop, 90 + Math.random() * 420);
     };
     pop();
   }
 
+  #musicNote(freq, t0, dur, gain = 0.045) {
+    if (!this.ctx || !this._bus) return;
+    const osc = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const lp = this.ctx.createBiquadFilter();
+    const env = this.ctx.createGain();
+    osc.type = "sine";
+    osc2.type = "sine";
+    osc.frequency.setValueAtTime(freq, t0);
+    osc2.frequency.setValueAtTime(freq * 1.003, t0);
+    lp.type = "lowpass";
+    lp.frequency.value = 1200;
+    lp.Q.value = 0.4;
+    const attack = Math.min(0.12, dur * 0.18);
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(gain, t0 + attack);
+    env.gain.exponentialRampToValueAtTime(gain * 0.7, t0 + dur * 0.55);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(lp);
+    osc2.connect(lp);
+    lp.connect(env);
+    env.connect(this.#out());
+    osc.start(t0);
+    osc2.start(t0);
+    osc.stop(t0 + dur + 0.02);
+    osc2.stop(t0 + dur + 0.02);
+  }
+
   #startEvening() {
-    this.#loopNoise("lowpass", 380, 0.4, 0.055);
-    const notes = [196, 247, 294, 330, 392, 494];
-    const phrase = () => {
-      if (this.ambienceId !== "evening" || !this.ctx) return;
-      const t0 = this.#now();
-      const a = notes[Math.floor(Math.random() * notes.length)];
-      const b = notes[Math.floor(Math.random() * notes.length)];
-      [a, b].forEach((freq, i) => {
-        const osc = this.ctx.createOscillator();
-        const env = this.ctx.createGain();
-        const f = this.ctx.createBiquadFilter();
-        osc.type = "triangle";
-        osc.frequency.value = freq;
-        f.type = "lowpass";
-        f.frequency.value = 900;
-        const start = t0 + i * 1.4;
-        env.gain.setValueAtTime(0.0001, start);
-        env.gain.exponentialRampToValueAtTime(0.045, start + 1.1);
-        env.gain.exponentialRampToValueAtTime(0.0001, start + 4.2);
-        osc.connect(f);
-        f.connect(env);
-        env.connect(this.ambienceGain);
-        osc.start(start);
-        osc.stop(start + 4.4);
-        this.#keep(osc);
-      });
-      this.#later(phrase, 5200 + Math.random() * 4200);
+    this.#loopNoise("brown", "lowpass", 280, 0.4, 0.03);
+
+    const pad = (freq, gain) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      const lp = this.ctx.createBiquadFilter();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      lp.type = "lowpass";
+      lp.frequency.value = 700;
+      g.gain.value = gain;
+      osc.connect(lp);
+      lp.connect(g);
+      g.connect(this.#out());
+      osc.start();
+      this.#keep(osc);
+      this.#keep(g);
+      this.#keep(lp);
     };
-    phrase();
+    pad(130.81, 0.03);
+    pad(196.0, 0.02);
+    pad(261.63, 0.012);
+
+    const beat = 0.52;
+    const loopBeats = 16;
+    const melody = [
+      [0, 329.63, 1.6],
+      [2, 392.0, 1.6],
+      [4, 440.0, 1.1],
+      [5.2, 392.0, 1.6],
+      [7, 329.63, 1.5],
+      [8.6, 293.66, 1.1],
+      [10, 261.63, 2.2],
+      [12.4, 293.66, 1.1],
+      [13.6, 329.63, 2.2],
+    ];
+    const bass = [
+      [0, 130.81],
+      [4, 174.61],
+      [8, 196.0],
+      [12, 130.81],
+    ];
+
+    const playLoop = () => {
+      if (this.ambienceId !== "evening" || !this.ctx || !this._bus) return;
+      const t0 = this.#now() + 0.04;
+      melody.forEach(([b, freq, dur]) => {
+        this.#musicNote(freq, t0 + b * beat, dur * beat, 0.05);
+      });
+      bass.forEach(([b, freq]) => {
+        this.#musicNote(freq, t0 + b * beat, 3.6 * beat, 0.034);
+      });
+      this.#later(playLoop, loopBeats * beat * 1000);
+    };
+    playLoop();
+  }
+
+  #murmur(delay) {
+    if (!this.ctx || !this._bus) return;
+    const t0 = this.#now() + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.#noiseBuffer("pink", 2);
+    src.playbackRate.value = 0.85 + Math.random() * 0.35;
+    const f1 = this.ctx.createBiquadFilter();
+    const f2 = this.ctx.createBiquadFilter();
+    const lp = this.ctx.createBiquadFilter();
+    f1.type = "bandpass";
+    f1.frequency.value = 380 + Math.random() * 320;
+    f1.Q.value = 1.7;
+    f2.type = "bandpass";
+    f2.frequency.value = 1050 + Math.random() * 700;
+    f2.Q.value = 1.3;
+    lp.type = "lowpass";
+    lp.frequency.value = 1700;
+    const env = this.ctx.createGain();
+    const dur = 0.09 + Math.random() * 0.16;
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(0.045 + Math.random() * 0.03, t0 + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f1);
+    f1.connect(f2);
+    f2.connect(lp);
+    lp.connect(env);
+    env.connect(this.#out());
+    src.start(t0);
+    src.stop(t0 + dur + 0.03);
+  }
+
+  #startVisitors() {
+    this.#loopNoise("brown", "lowpass", 420, 0.45, 0.045);
+    const hush = this.#loopNoise("pink", "lowpass", 900, 0.5, 0.035);
+    hush.filter.frequency.value = 900;
+
+    const talk = () => {
+      if (this.ambienceId !== "visitors" || !this.ctx || !this._bus) return;
+      const n = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) {
+        this.#murmur(i * (0.06 + Math.random() * 0.11));
+      }
+      this.#later(talk, 320 + Math.random() * 720);
+    };
+    talk();
   }
 }
