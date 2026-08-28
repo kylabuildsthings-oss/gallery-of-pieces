@@ -3,7 +3,7 @@
 export const AMBIENCES = [
   { id: "off", label: "Quiet", hint: "Just the gallery" },
   { id: "hearth", label: "Hearth", hint: "A low fire in the next room" },
-  { id: "rain", label: "Soft rain", hint: "Splatters on the windowsill" },
+  { id: "wind", label: "White noise", hint: "A breeze at the window" },
   { id: "evening", label: "Evening music", hint: "A quiet original lullaby" },
 ];
 
@@ -118,7 +118,7 @@ export class Sfx {
     this._bus.connect(this.ambienceGain);
     this.#keep(this._bus);
     if (id === "hearth") this.#startHearth();
-    else if (id === "rain") this.#startRain();
+    else if (id === "wind") this.#startWind();
     else this.#startEvening();
   }
 
@@ -255,47 +255,38 @@ export class Sfx {
     src.stop(t0 + dur + 0.02);
   }
 
-  #startRain() {
-    const gust = () => {
-      if (this.ambienceId !== "rain" || !this.ctx || !this._bus) return;
-      const n = 8 + Math.floor(Math.random() * 16);
-      let t = 0;
-      for (let i = 0; i < n; i++) {
-        this.#splatter(t);
-        t += 0.016 + Math.random() * 0.055;
-      }
-      this.#later(gust, 1100 + Math.random() * 2600);
-    };
-    this.#later(gust, 180);
-  }
+  #startWind() {
+    const bed = this.#loopNoise("pink", "lowpass", 880, 0.55, 0.2);
+    const lfo = this.ctx.createOscillator();
+    const lfoG = this.ctx.createGain();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.06;
+    lfoG.gain.value = 380;
+    lfo.connect(lfoG);
+    lfoG.connect(bed.filter.frequency);
+    lfo.start();
+    this.#keep(lfo);
+    this.#keep(lfoG);
 
-  #splatter(delay = 0) {
-    const t0 = this.#now() + delay;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.#noiseBuffer("white", 2);
-    src.playbackRate.value = 1.6 + Math.random() * 1.1;
+    const air = this.#loopNoise("white", "lowpass", 1400, 0.45, 0.05);
     const hp = this.ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 1600;
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 2800 + Math.random() * 2200;
-    bp.Q.value = 0.55;
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 6500;
-    const env = this.ctx.createGain();
-    const dur = 0.012 + Math.random() * 0.022;
-    env.gain.setValueAtTime(0.0001, t0);
-    env.gain.exponentialRampToValueAtTime(0.016 + Math.random() * 0.018, t0 + 0.003);
-    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(hp);
-    hp.connect(bp);
-    bp.connect(lp);
-    lp.connect(env);
-    env.connect(this.#out());
-    src.start(t0);
-    src.stop(t0 + dur + 0.02);
+    hp.frequency.value = 180;
+    air.filter.disconnect();
+    air.filter.connect(hp);
+    hp.connect(air.g);
+    this.#keep(hp);
+
+    const gust = this.ctx.createOscillator();
+    const gustG = this.ctx.createGain();
+    gust.type = "sine";
+    gust.frequency.value = 0.035;
+    gustG.gain.value = 0.028;
+    gust.connect(gustG);
+    gustG.connect(air.g.gain);
+    gust.start();
+    this.#keep(gust);
+    this.#keep(gustG);
   }
 
   #musicNote(freq, t0, dur, gain = 0.045) {
