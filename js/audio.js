@@ -2,10 +2,8 @@
 
 export const AMBIENCES = [
   { id: "off", label: "Quiet", hint: "Just the gallery" },
-  { id: "rain", label: "Soft rain", hint: "A drizzle on the skylight" },
   { id: "hearth", label: "Hearth", hint: "A low fire in the next room" },
   { id: "evening", label: "Evening music", hint: "A quiet original lullaby" },
-  { id: "visitors", label: "Visitors", hint: "Soft talk from the next room" },
 ];
 
 export class Sfx {
@@ -118,9 +116,7 @@ export class Sfx {
     this._bus.gain.value = 1;
     this._bus.connect(this.ambienceGain);
     this.#keep(this._bus);
-    if (id === "rain") this.#startRain();
-    else if (id === "hearth") this.#startHearth();
-    else if (id === "visitors") this.#startVisitors();
+    if (id === "hearth") this.#startHearth();
     else this.#startEvening();
   }
 
@@ -209,62 +205,6 @@ export class Sfx {
     this.#keep(filter);
     this.#keep(g);
     return { src, filter, g };
-  }
-
-  #startRain() {
-    const wash = this.#loopNoise("pink", "lowpass", 6400, 0.65, 0.22);
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 420;
-    wash.filter.disconnect();
-    wash.filter.connect(hp);
-    hp.connect(wash.g);
-    this.#keep(hp);
-
-    const spray = this.#loopNoise("white", "highpass", 2400, 0.7, 0.05);
-    spray.filter.frequency.value = 2400;
-    const sprayLp = this.ctx.createBiquadFilter();
-    sprayLp.type = "lowpass";
-    sprayLp.frequency.value = 9000;
-    spray.filter.disconnect();
-    spray.filter.connect(sprayLp);
-    sprayLp.connect(spray.g);
-    this.#keep(sprayLp);
-
-    const lfo = this.ctx.createOscillator();
-    const lfoG = this.ctx.createGain();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.05;
-    lfoG.gain.value = 0.04;
-    lfo.connect(lfoG);
-    lfoG.connect(wash.g.gain);
-    lfo.start();
-    this.#keep(lfo);
-    this.#keep(lfoG);
-
-    const drop = () => {
-      if (this.ambienceId !== "rain" || !this.ctx || !this._bus) return;
-      const t0 = this.#now();
-      const src = this.ctx.createBufferSource();
-      src.buffer = this.#noiseBuffer("white", 2);
-      src.loop = true;
-      const bp = this.ctx.createBiquadFilter();
-      bp.type = "bandpass";
-      bp.frequency.value = 1800 + Math.random() * 2200;
-      bp.Q.value = 0.9;
-      const env = this.ctx.createGain();
-      const dur = 0.05 + Math.random() * 0.07;
-      env.gain.setValueAtTime(0.0001, t0);
-      env.gain.exponentialRampToValueAtTime(0.07 + Math.random() * 0.05, t0 + 0.008);
-      env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      src.connect(bp);
-      bp.connect(env);
-      env.connect(this.#out());
-      src.start(t0);
-      src.stop(t0 + dur + 0.02);
-      this.#later(drop, 420 + Math.random() * 1100);
-    };
-    drop();
   }
 
   #startHearth() {
@@ -388,52 +328,5 @@ export class Sfx {
       this.#later(playLoop, loopBeats * beat * 1000);
     };
     playLoop();
-  }
-
-  #murmur(delay) {
-    if (!this.ctx || !this._bus) return;
-    const t0 = this.#now() + delay;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.#noiseBuffer("pink", 2);
-    src.playbackRate.value = 0.85 + Math.random() * 0.35;
-    const f1 = this.ctx.createBiquadFilter();
-    const f2 = this.ctx.createBiquadFilter();
-    const lp = this.ctx.createBiquadFilter();
-    f1.type = "bandpass";
-    f1.frequency.value = 380 + Math.random() * 320;
-    f1.Q.value = 1.7;
-    f2.type = "bandpass";
-    f2.frequency.value = 1050 + Math.random() * 700;
-    f2.Q.value = 1.3;
-    lp.type = "lowpass";
-    lp.frequency.value = 1700;
-    const env = this.ctx.createGain();
-    const dur = 0.09 + Math.random() * 0.16;
-    env.gain.setValueAtTime(0.0001, t0);
-    env.gain.exponentialRampToValueAtTime(0.045 + Math.random() * 0.03, t0 + 0.02);
-    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(f1);
-    f1.connect(f2);
-    f2.connect(lp);
-    lp.connect(env);
-    env.connect(this.#out());
-    src.start(t0);
-    src.stop(t0 + dur + 0.03);
-  }
-
-  #startVisitors() {
-    this.#loopNoise("brown", "lowpass", 420, 0.45, 0.045);
-    const hush = this.#loopNoise("pink", "lowpass", 900, 0.5, 0.035);
-    hush.filter.frequency.value = 900;
-
-    const talk = () => {
-      if (this.ambienceId !== "visitors" || !this.ctx || !this._bus) return;
-      const n = 2 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < n; i++) {
-        this.#murmur(i * (0.06 + Math.random() * 0.11));
-      }
-      this.#later(talk, 320 + Math.random() * 720);
-    };
-    talk();
   }
 }
