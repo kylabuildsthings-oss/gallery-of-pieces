@@ -3,6 +3,7 @@
 export const AMBIENCES = [
   { id: "off", label: "Quiet", hint: "Just the gallery" },
   { id: "hearth", label: "Hearth", hint: "A low fire in the next room" },
+  { id: "rain", label: "Soft rain", hint: "Splatters on the windowsill" },
   { id: "evening", label: "Evening music", hint: "A quiet original lullaby" },
 ];
 
@@ -117,6 +118,7 @@ export class Sfx {
     this._bus.connect(this.ambienceGain);
     this.#keep(this._bus);
     if (id === "hearth") this.#startHearth();
+    else if (id === "rain") this.#startRain();
     else this.#startEvening();
   }
 
@@ -208,40 +210,92 @@ export class Sfx {
   }
 
   #startHearth() {
-    this.#loopNoise("brown", "lowpass", 240, 0.5, 0.1);
+    this.#loopNoise("brown", "lowpass", 180, 0.5, 0.07);
     const rumble = this.ctx.createOscillator();
     const rg = this.ctx.createGain();
     rumble.type = "sine";
-    rumble.frequency.value = 52;
-    rg.gain.value = 0.028;
+    rumble.frequency.value = 48;
+    rg.gain.value = 0.02;
     rumble.connect(rg);
     rg.connect(this.#out());
     rumble.start();
     this.#keep(rumble);
     this.#keep(rg);
 
-    const pop = () => {
+    const crackle = () => {
       if (this.ambienceId !== "hearth" || !this.ctx || !this._bus) return;
-      const t0 = this.#now();
-      const src = this.ctx.createBufferSource();
-      src.buffer = this.#noiseBuffer("white", 2);
-      const bp = this.ctx.createBiquadFilter();
-      bp.type = "bandpass";
-      bp.frequency.value = 280 + Math.random() * 900;
-      bp.Q.value = 0.7;
-      const env = this.ctx.createGain();
-      const dur = 0.05 + Math.random() * 0.12;
-      env.gain.setValueAtTime(0.0001, t0);
-      env.gain.exponentialRampToValueAtTime(0.1 + Math.random() * 0.08, t0 + 0.01);
-      env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      src.connect(bp);
-      bp.connect(env);
-      env.connect(this.#out());
-      src.start(t0);
-      src.stop(t0 + dur + 0.02);
-      this.#later(pop, 90 + Math.random() * 420);
+      this.#pop();
+      if (Math.random() < 0.28) this.#pop(0.09 + Math.random() * 0.08);
+      this.#later(crackle, 2800 + Math.random() * 5200);
     };
-    pop();
+    this.#later(crackle, 1600 + Math.random() * 1200);
+  }
+
+  #pop(delay = 0) {
+    const t0 = this.#now() + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.#noiseBuffer("white", 2);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 220 + Math.random() * 420;
+    bp.Q.value = 0.9;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1400;
+    const env = this.ctx.createGain();
+    const dur = 0.06 + Math.random() * 0.1;
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(0.09 + Math.random() * 0.05, t0 + 0.012);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp);
+    bp.connect(lp);
+    lp.connect(env);
+    env.connect(this.#out());
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+
+  #startRain() {
+    const gust = () => {
+      if (this.ambienceId !== "rain" || !this.ctx || !this._bus) return;
+      const n = 8 + Math.floor(Math.random() * 16);
+      let t = 0;
+      for (let i = 0; i < n; i++) {
+        this.#splatter(t);
+        t += 0.016 + Math.random() * 0.055;
+      }
+      this.#later(gust, 1100 + Math.random() * 2600);
+    };
+    this.#later(gust, 180);
+  }
+
+  #splatter(delay = 0) {
+    const t0 = this.#now() + delay;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.#noiseBuffer("white", 2);
+    src.playbackRate.value = 1.6 + Math.random() * 1.1;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 1600;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 2800 + Math.random() * 2200;
+    bp.Q.value = 0.55;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 6500;
+    const env = this.ctx.createGain();
+    const dur = 0.012 + Math.random() * 0.022;
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(0.016 + Math.random() * 0.018, t0 + 0.003);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(hp);
+    hp.connect(bp);
+    bp.connect(lp);
+    lp.connect(env);
+    env.connect(this.#out());
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
   }
 
   #musicNote(freq, t0, dur, gain = 0.045) {

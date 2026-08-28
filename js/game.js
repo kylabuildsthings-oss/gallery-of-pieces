@@ -5,7 +5,7 @@ import {
   paintingById,
 } from "./paintings.js";
 import { loadAndPixelate } from "./pixelate.js?v=crop4";
-import { Sfx, AMBIENCES } from "./audio.js?v=cozy6";
+import { Sfx, AMBIENCES } from "./audio.js?v=cozy8";
 
 const sfx = new Sfx();
 
