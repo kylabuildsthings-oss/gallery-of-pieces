@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Gallery of Pieces</title>
+    <meta
+      name="description"
+      content="A cozy pixel-art puzzle gallery. Hang famous paintings, then put them back together — solo or pass-and-play."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/game.css?v=frames2" />
+  </head>
+  <body>
+    <div id="app">
+      <section id="screen-title" class="screen active">
+        <img
+          class="title-bg"
+          src="assets/ui/gallery-frames.jpg?v=fill3"
+          alt=""
+        />
+        <div class="title-scrim"></div>
+        <button type="button" id="btn-enter" class="title-card">
+          <img
+            class="title-logo"
+            src="assets/ui/logo.jpg?v=fill3"
+            alt="Gallery of Pieces"
+          />
+          <span class="title-hint blink">Tap to enter the gallery</span>
+        </button>
+      </section>
+
+      <section id="screen-gallery" class="screen">
+        <header class="gallery-header">
+          <button type="button" id="btn-title" class="brand" aria-label="Back to the title screen">
+            Gallery of Pieces
+          </button>
+          <p class="session-note">
+            Hung this visit: <strong id="hung-count">0</strong>
+          </p>
+          <nav class="header-actions" aria-label="Gallery navigation">
+            <button type="button" id="btn-gallery-home" class="cozy-btn" aria-label="Home, back to the title screen">
+              <img src="assets/ui/icons/home.png" alt="" />
+              <span>Home</span>
+            </button>
+            <button type="button" id="btn-book" class="cozy-btn" aria-label="Open the catalogue of artists">
+              <img src="assets/ui/icons/book.png?v=cute" alt="" />
+              <span>Catalogue</span>
+            </button>
+          </nav>
+        </header>
+        <p id="hang-banner" class="hang-banner" hidden></p>
+        <div class="gallery-stage" id="gallery-stage">
+          <div class="gallery-art" id="gallery-art">
+            <img
+              class="gallery-bg"
+              id="gallery-bg"
+              src="assets/ui/gallery-hooks.jpg?v=nohooks1"
+              alt="A cozy gallery wall"
+            />
+            <div id="frame-layer"></div>
+          </div>
+        </div>
+        <p class="credit">
+          Paintings from open-access collections · NGA, Art Institute, Met, Cleveland, Phillips
+        </p>
+      </section>
+
+      <section id="screen-puzzle" class="screen">
+        <header class="puzzle-header">
+          <button type="button" id="btn-home" class="icon-btn" aria-label="Return to gallery">
+            <img src="assets/ui/icons/home.png" alt="" />
+          </button>
+          <div class="puzzle-meta">
+            <h1 id="puzzle-title"></h1>
+            <p id="puzzle-artist"></p>
+          </div>
+          <div id="puzzle-hud" class="puzzle-hud"></div>
+        </header>
+        <div id="turn-banner" class="turn-banner" hidden></div>
+        <div class="puzzle-layout">
+          <div class="board-column">
+            <div class="board-frame">
+              <div id="board" class="board" aria-label="Puzzle board"></div>
+            </div>
+            <div class="ref-row">
+              <p class="ref-label">Reference</p>
+              <img id="ref-thumb" class="ref-thumb" alt="Pixelated painting reference" />
+            </div>
+          </div>
+          <aside class="tray-column">
+            <p class="tray-label">Pieces</p>
+            <div id="tray" class="tray"></div>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <div id="modal-mode" class="modal" hidden>
+      <div class="modal-card">
+        <img id="mode-preview" class="mode-preview" alt="" />
+        <h2 id="mode-title"></h2>
+        <p id="mode-artist"></p>
+        <p class="mode-prompt">How would you like to restore this painting?</p>
+        <div class="mode-actions">
+          <button type="button" id="btn-solo" class="mode-btn">
+            <img src="assets/ui/icons/home.png" alt="" />
+            <span>Solo</span>
+            <small>Relaxed, no timer</small>
+          </button>
+          <button type="button" id="btn-versus" class="mode-btn versus">
+            <img src="assets/ui/icons/vs.png" alt="" />
+            <span>Multiplayer</span>
+            <small>Pass the device · Blue vs Red</small>
+          </button>
+        </div>
+        <button type="button" id="btn-hang" class="text-btn">
+          Hang this on a hook instead
+        </button>
+        <button type="button" id="btn-swap" class="text-btn">
+          Change the work on this hook
+        </button>
+        <button type="button" id="btn-mode-cancel" class="text-btn">Back</button>
+      </div>
+    </div>
+
+    <div id="modal-complete" class="modal" hidden>
+      <div class="modal-card complete-card">
+        <img
+          class="complete-art"
+          src="assets/ui/complete.png"
+          alt="Complete!"
+        />
+        <div id="winner-row" class="winner-row" hidden>
+          <img src="assets/ui/icons/crown.png" alt="" />
+          <p id="winner-text"></p>
+        </div>
+        <p id="complete-summary" class="complete-summary"></p>
+        <div class="mode-actions">
+          <button type="button" id="btn-again" class="mode-btn">
+            <img src="assets/ui/icons/star.png" alt="" />
+            <span>Play Again</span>
+          </button>
+          <button type="button" id="btn-gallery" class="mode-btn">
+            <img src="assets/ui/icons/back.png" alt="" />
+            <span>Return to Gallery</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-book" class="modal" hidden>
+      <div class="modal-card book-card">
+        <h2 id="book-heading">Catalogue</h2>
+        <p id="book-sub" class="mode-prompt">Pick an artist, then a painting to restore.</p>
+        <div id="book-grid" class="book-grid"></div>
+        <button type="button" id="btn-book-back" class="text-btn">Back</button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading" hidden>
+      <div class="loading-box">
+        <p>Hanging the painting</p>
+        <div class="pixel-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+
+    <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+
+    <script type="module" src="js/game.js?v=frames2"></script>
+  </body>
+</html>
