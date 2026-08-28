@@ -256,37 +256,45 @@ export class Sfx {
   }
 
   #startWind() {
-    const bed = this.#loopNoise("pink", "lowpass", 880, 0.55, 0.2);
+    const bed = this.#loopNoise("brown", "lowpass", 420, 0.45, 0.055);
     const lfo = this.ctx.createOscillator();
     const lfoG = this.ctx.createGain();
     lfo.type = "sine";
-    lfo.frequency.value = 0.06;
-    lfoG.gain.value = 380;
+    lfo.frequency.value = 0.04;
+    lfoG.gain.value = 90;
     lfo.connect(lfoG);
     lfoG.connect(bed.filter.frequency);
     lfo.start();
     this.#keep(lfo);
     this.#keep(lfoG);
 
-    const air = this.#loopNoise("white", "lowpass", 1400, 0.45, 0.05);
-    const hp = this.ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 180;
-    air.filter.disconnect();
-    air.filter.connect(hp);
-    hp.connect(air.g);
-    this.#keep(hp);
+    const air = this.#loopNoise("pink", "lowpass", 640, 0.4, 0.022);
+    const breathe = this.ctx.createOscillator();
+    const breatheG = this.ctx.createGain();
+    breathe.type = "sine";
+    breathe.frequency.value = 0.05;
+    breatheG.gain.value = 0.01;
+    breathe.connect(breatheG);
+    breatheG.connect(air.g.gain);
+    breathe.start();
+    this.#keep(breathe);
+    this.#keep(breatheG);
 
-    const gust = this.ctx.createOscillator();
-    const gustG = this.ctx.createGain();
-    gust.type = "sine";
-    gust.frequency.value = 0.035;
-    gustG.gain.value = 0.028;
-    gust.connect(gustG);
-    gustG.connect(air.g.gain);
-    gust.start();
-    this.#keep(gust);
-    this.#keep(gustG);
+    const swell = () => {
+      if (this.ambienceId !== "wind" || !this.ctx || !this._bus) return;
+      const t0 = this.#now();
+      const peak = 0.08 + Math.random() * 0.03;
+      const rise = 0.9 + Math.random() * 0.6;
+      const hold = 0.8 + Math.random() * 1.1;
+      const fall = 1.4 + Math.random() * 0.8;
+      const quiet = 0.028;
+      bed.g.gain.cancelScheduledValues(t0);
+      bed.g.gain.setValueAtTime(Math.max(quiet, bed.g.gain.value), t0);
+      bed.g.gain.linearRampToValueAtTime(peak, t0 + rise);
+      bed.g.gain.linearRampToValueAtTime(quiet, t0 + rise + hold + fall);
+      this.#later(swell, (rise + hold + fall + 3.2 + Math.random() * 3.8) * 1000);
+    };
+    this.#later(swell, 2200 + Math.random() * 1600);
   }
 
   #musicNote(freq, t0, dur, gain = 0.045) {
