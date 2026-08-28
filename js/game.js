@@ -5,17 +5,17 @@ import {
   paintingById,
 } from "./paintings.js";
 import { loadAndPixelate } from "./pixelate.js";
-import { Sfx } from "./audio.js";
+import { Sfx, AMBIENCES } from "./audio.js";
 
 const sfx = new Sfx();
 
 const HOOKS = [
-  { left: "26.5%", top: "21.2%", size: "small" },
-  { left: "50.0%", top: "20.4%", size: "small" },
+  { left: "26.5%", top: "21.0%", size: "small" },
+  { left: "50.0%", top: "21.0%", size: "small" },
   { left: "73.5%", top: "21.0%", size: "small" },
-  { left: "50.0%", top: "39.6%", featured: true },
-  { left: "24.6%", top: "50.2%", size: "medium" },
-  { left: "75.4%", top: "50.0%", size: "medium" },
+  { left: "50.0%", top: "39.2%", featured: true },
+  { left: "26.5%", top: "39.2%", size: "medium" },
+  { left: "73.5%", top: "39.2%", size: "medium" },
 ];
 
 const state = {
@@ -82,6 +82,11 @@ const els = {
   hangBanner: $("hang-banner"),
   btnHang: $("btn-hang"),
   btnSwap: $("btn-swap"),
+  btnSettings: $("btn-settings"),
+  btnSettingsPuzzle: $("btn-settings-puzzle"),
+  settingsPop: $("settings-pop"),
+  ambienceList: $("ambience-list"),
+  ambienceVol: $("ambience-vol"),
 };
 
 function fitBoard() {
@@ -735,10 +740,58 @@ function returnToTitle() {
   showScreen("title");
 }
 
+function syncAmbienceButtons() {
+  els.ambienceList.querySelectorAll(".ambience-opt").forEach((btn) => {
+    btn.setAttribute("aria-pressed", String(btn.dataset.ambience === sfx.ambienceId));
+  });
+  if (els.btnSettings) {
+    els.btnSettings.setAttribute("aria-expanded", String(!els.settingsPop.hidden));
+  }
+}
+
+function fillAmbienceList() {
+  els.ambienceList.innerHTML = "";
+  AMBIENCES.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ambience-opt";
+    btn.dataset.ambience = opt.id;
+    btn.innerHTML = `<span>${opt.label}</span><small>${opt.hint}</small>`;
+    btn.addEventListener("click", () => {
+      sfx.resume();
+      sfx.tick();
+      sfx.setAmbience(opt.id);
+      syncAmbienceButtons();
+    });
+    els.ambienceList.appendChild(btn);
+  });
+  syncAmbienceButtons();
+}
+
+function openSettings() {
+  sfx.tick();
+  els.settingsPop.hidden = false;
+  syncAmbienceButtons();
+}
+
+function closeSettings() {
+  if (els.settingsPop.hidden) return;
+  els.settingsPop.hidden = true;
+  syncAmbienceButtons();
+}
+
+function toggleSettings(e) {
+  e.stopPropagation();
+  if (els.settingsPop.hidden) openSettings();
+  else closeSettings();
+}
+
 function bind() {
+  fillAmbienceList();
   els.enter.addEventListener("click", () => {
     sfx.resume();
     sfx.tick();
+    sfx.setAmbience(sfx.ambienceId);
     showScreen("gallery");
     renderGallery();
   });
@@ -801,6 +854,17 @@ function bind() {
     state.hangSlot = null;
     openBook("artists");
   };
+  els.btnSettings.addEventListener("click", toggleSettings);
+  els.btnSettingsPuzzle.addEventListener("click", toggleSettings);
+  els.ambienceVol.addEventListener("input", () => {
+    sfx.setVolume(Number(els.ambienceVol.value) / 100);
+  });
+  document.addEventListener("click", (e) => {
+    if (els.settingsPop.hidden) return;
+    if (els.settingsPop.contains(e.target)) return;
+    if (e.target.closest("#btn-settings, #btn-settings-puzzle")) return;
+    closeSettings();
+  });
   els.btnBook.addEventListener("click", openCatalogue);
   els.btnBookBack.addEventListener("click", () => {
     sfx.tick();
@@ -827,6 +891,10 @@ function bind() {
   });
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+    if (!els.settingsPop.hidden) {
+      closeSettings();
+      return;
+    }
     if (!els.completeModal.hidden) return;
     if (!els.modeModal.hidden) closeMode();
     else if (!els.bookModal.hidden) {

@@ -17,7 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/game.css?v=crop3" />
+    <link rel="stylesheet" href="css/game.css?v=ambience1" />
   </head>
   <body>
     <div id="app">
@@ -47,6 +47,10 @@
             Hung this visit: <strong id="hung-count">0</strong>
           </p>
           <nav class="header-actions" aria-label="Gallery navigation">
+            <button type="button" id="btn-settings" class="cozy-btn" aria-label="Open ambience settings" aria-haspopup="dialog" aria-expanded="false">
+              <img src="assets/ui/icons/cog.png?v=ambience1" alt="" />
+              <span>Settings</span>
+            </button>
             <button type="button" id="btn-gallery-home" class="cozy-btn" aria-label="Home, back to the title screen">
               <img src="assets/ui/icons/home.png" alt="" />
               <span>Home</span>
@@ -83,7 +87,12 @@
             <h1 id="puzzle-title"></h1>
             <p id="puzzle-artist"></p>
           </div>
-          <div id="puzzle-hud" class="puzzle-hud"></div>
+          <div class="puzzle-header-end">
+            <div id="puzzle-hud" class="puzzle-hud"></div>
+            <button type="button" id="btn-settings-puzzle" class="icon-btn" aria-label="Open ambience settings">
+              <img src="assets/ui/icons/cog.png?v=ambience1" alt="" />
+            </button>
+          </div>
         </header>
         <div id="turn-banner" class="turn-banner" hidden></div>
         <div class="puzzle-layout">
@@ -173,8 +182,16 @@
       </div>
     </div>
 
-    <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+    <div id="settings-pop" class="settings-pop" hidden>
+      <p class="settings-kicker">Ambience</p>
+      <p class="settings-lead">Original room tone — nothing licensed, nothing downloaded.</p>
+      <div id="ambience-list" class="ambience-list"></div>
+      <label class="settings-vol">
+        Volume
+        <input id="ambience-vol" type="range" min="0" max="100" value="55" />
+      </label>
+    </div>
 
-    <script type="module" src="js/game.js?v=crop3"></script>
+    <script type="module" src="js/game.js?v=ambience1"></script>
   </body>
 </html>
