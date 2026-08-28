@@ -153,7 +153,7 @@ export function slicePieces(large, grid = GRID) {
 }
 
 function remoteUrls(painting) {
-  const urls = [`assets/original/${painting.id}.jpg?v=crop3`];
+  const urls = [`assets/original/${painting.id}.jpg?v=crop4`];
   if (painting.uuid) {
     urls.push(
       `https://api.nga.gov/iiif/${painting.uuid}/full/!800,800/0/default.jpg`

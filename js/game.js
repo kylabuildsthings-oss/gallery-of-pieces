@@ -4,8 +4,8 @@ import {
   paintingsByArtist,
   paintingById,
 } from "./paintings.js";
-import { loadAndPixelate } from "./pixelate.js";
-import { Sfx, AMBIENCES } from "./audio.js?v=cozy5";
+import { loadAndPixelate } from "./pixelate.js?v=crop4";
+import { Sfx, AMBIENCES } from "./audio.js?v=cozy6";
 
 const sfx = new Sfx();
 
@@ -239,7 +239,7 @@ function renderGallery() {
       wrapping.classList.add("has-art");
       btn.classList.add("has-art");
       const art = btn.querySelector(".hung-art");
-      art.src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop3`;
+      art.src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop4`;
       loadAndPixelate(painting)
         .then((pix) => {
           painting._thumb = pix.dataUrl;
@@ -344,7 +344,7 @@ function renderBook() {
       "catalog-card work-card" +
       (state.completed.has(painting.id) ? " hung" : "") +
       (onWall ? " on-wall" : "");
-    const src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop3`;
+    const src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop4`;
     btn.innerHTML = `
       <img src="${src}" alt="" />
       <strong>${painting.title}</strong>
@@ -382,7 +382,7 @@ async function openModeSelect(painting, slot = null) {
   els.modeTitle.textContent = painting.title;
   els.modeArtist.textContent = `${painting.artist}, ${painting.year}`;
   els.modePreview.alt = painting.title;
-  els.modePreview.src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop3`;
+  els.modePreview.src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop4`;
   els.modeModal.hidden = false;
   try {
     const art = await loadAndPixelate(painting);
