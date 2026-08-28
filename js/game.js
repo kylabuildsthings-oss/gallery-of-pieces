@@ -10,12 +10,12 @@ import { Sfx } from "./audio.js";
 const sfx = new Sfx();
 
 const HOOKS = [
-  { left: "26.5%", top: "21.0%" },
-  { left: "50.0%", top: "20.2%" },
-  { left: "73.5%", top: "20.8%" },
-  { left: "50.0%", top: "40.4%", featured: true },
-  { left: "25.8%", top: "48.6%" },
-  { left: "74.2%", top: "48.4%" },
+  { left: "26.5%", top: "21.2%", size: "small" },
+  { left: "50.0%", top: "20.4%", size: "small" },
+  { left: "73.5%", top: "21.0%", size: "small" },
+  { left: "50.0%", top: "39.6%", featured: true },
+  { left: "24.6%", top: "50.2%", size: "medium" },
+  { left: "75.4%", top: "50.0%", size: "medium" },
 ];
 
 const state = {
@@ -192,10 +192,11 @@ function renderGallery() {
     const empty = !painting;
     const done = painting ? state.completed.has(painting.id) : false;
     const featured = !!hook.featured;
+    const size = featured ? "centerpiece" : hook.size || "small";
     const wrapping = document.createElement("div");
     wrapping.className =
       "hook-wrap" +
-      (featured ? " centerpiece" : "") +
+      (size === "centerpiece" ? " centerpiece" : size === "medium" ? " medium" : " small") +
       (state.pickingHook ? " picking" : "") +
       (empty ? " empty" : done ? " done" : " preview");
     wrapping.style.left = hook.left;
@@ -215,9 +216,12 @@ function renderGallery() {
           : "Empty frame. Hang a painting from the catalogue."
         : `${painting.title} by ${painting.artist}`
     );
-    const chrome = featured
-      ? "assets/ui/frame-ornate.png?v=frames2"
-      : "assets/ui/frame-medium.png?v=frames2";
+    const chrome =
+      size === "centerpiece"
+        ? "assets/ui/frame-ornate.png?v=crop3"
+        : size === "medium"
+          ? "assets/ui/frame-medium.png?v=crop3"
+          : "assets/ui/frame-small.png?v=crop3";
     btn.innerHTML = `
       <img class="frame-chrome" src="${chrome}" alt="" />
       <span class="frame-inner">
@@ -230,7 +234,7 @@ function renderGallery() {
       wrapping.classList.add("has-art");
       btn.classList.add("has-art");
       const art = btn.querySelector(".hung-art");
-      art.src = painting._thumb || `assets/original/${painting.id}.jpg`;
+      art.src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop3`;
       loadAndPixelate(painting)
         .then((pix) => {
           painting._thumb = pix.dataUrl;
@@ -335,7 +339,7 @@ function renderBook() {
       "catalog-card work-card" +
       (state.completed.has(painting.id) ? " hung" : "") +
       (onWall ? " on-wall" : "");
-    const src = painting._thumb || `assets/original/${painting.id}.jpg`;
+    const src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop3`;
     btn.innerHTML = `
       <img src="${src}" alt="" />
       <strong>${painting.title}</strong>
@@ -373,7 +377,7 @@ async function openModeSelect(painting, slot = null) {
   els.modeTitle.textContent = painting.title;
   els.modeArtist.textContent = `${painting.artist}, ${painting.year}`;
   els.modePreview.alt = painting.title;
-  els.modePreview.src = painting._thumb || `assets/original/${painting.id}.jpg`;
+  els.modePreview.src = painting._thumb || `assets/original/${painting.id}.jpg?v=crop3`;
   els.modeModal.hidden = false;
   try {
     const art = await loadAndPixelate(painting);
